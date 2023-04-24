@@ -1,37 +1,28 @@
 <?php
 
 
-$handle = fopen("./products1.csv", "r");
+$products = array_map('str_getcsv', file('products.csv'));
+array_walk($products, function(&$a) use ($products) {
+    $a = array_combine($products[0], $a);
+});
+array_shift($products); # remove column header
 
-$lineNumber = 0;
-$products = [];
-while ($raw_string = fgets($handle)) {
-    // Skip the header
-    if ($lineNumber === 0) {
-        $lineNumber++;
-        continue;
+$flat = [];
+$tree = [];
+
+foreach ($products as $product) {
+    $child = $product;
+    $parent = $products['parent_id'] ;
+    if (!isset($flat[$child['id']])) {
+        $flat[$child['id']] = [];
     }
-
-    [$product_id, $parent_id, $name] = str_getcsv($raw_string);
-    foreach ($products as $id => $product) {
-        if ($parent_id == $id) {
-            $products[$id]['children'][$product_id] = [
-                'name' => $name
-            ];
-            unset($products[$product_id]);
-            continue 2;
-        }
+    if (!empty($parent['id'])) {
+        $flat[$parent['id']][$child] =& $flat[$child['id']];
+    } else {
+        $tree[$child['id']] =& $flat[$child['id']];
     }
-
-    $products[$product_id] = [
-        'name' => $name,
-        'children' => []
-    ];
-
-    // Increase the current line
-    $lineNumber++;
 }
 
-echo(json_encode($products, JSON_UNESCAPED_UNICODE));
+echo(json_encode($tree, JSON_UNESCAPED_UNICODE));
 
-fclose($handle);
+#fclose($handle);
