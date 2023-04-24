@@ -11,23 +11,24 @@ array_map(function ($str) use (&$flatProducts, $headers) {
     $flatProducts[$str['id']] = array_combine($headers, $str);
 }, $file);
 
-// Группируем продукты по parent_id
-$groupedProducts = [];
-foreach ($flatProducts as $product) {
-    $groupedProducts[$product['parent_id']][$product['id']] = $product;
-}
 
 $productsTree = [];
-foreach ($flatProducts as &$product) {
+foreach ($flatProducts as $product) {
     $parentId = $product['parent_id'];
     $level = 0;
     while ($flatProducts[$parentId] ?? null) {
         if (isset($productsTree[$parentId])) {
-            unset($productsTree[$parentId]);
+            $productsTree[$parentId]['children'][] = $product;
+        } else {
+            $productsTree[$parentId]['name'] = $flatProducts[$parentId]['name'];
+            $productsTree[$parentId]['parent_id'] = $flatProducts[$parentId]['parent_id'];
+            $productsTree[$parentId]['children'][$product['id']] = $product;
         }
-        $productsTree[$parentId]['name'] = $flatProducts[$parentId]['name'];
-        $productsTree[$parentId]['children'][$product['id']] = $product;
+
         $parentId = $flatProducts[$parentId]['parent_id'];
+        if ($parentId) {
+            $product = $productsTree[$parentId];
+        }
     }
 }
 
