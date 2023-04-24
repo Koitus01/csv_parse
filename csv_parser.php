@@ -5,80 +5,37 @@ $headers = str_getcsv(fgets(fopen('products.csv', 'r')));
 $file = file('products.csv');
 array_shift($file);
 // Формируем список продуктов
-$flatProducts = [];
-array_map(function ($str) use (&$flatProducts, $headers) {
+$list = [];
+array_map(function ($str) use (&$list, $headers) {
     $str = array_combine($headers, str_getcsv($str));
-    $flatProducts[$str['id']] = array_combine($headers, $str);
+    $list[$str['id']] = array_combine($headers, $str);
 }, $file);
 
-// Группируем продукты по parent_id
-$groupedProducts = [];
-foreach ($flatProducts as $product) {
-    $groupedProducts[$product['parent_id']][$product['id']] = $product;
-}
+$tree = [];
 
-$productsTree = [];
-foreach ($groupedProducts as $groupOfProduct) {
-    $parentId = reset($groupOfProduct)['parent_id'];
-    while ($parent = $flatProducts[$parentId] ?? null) {
-        if ($parentId) {
-            $tree = $flatProducts[$parentId];
-            $tree['children'] = $groupOfProduct;
-            $parentId = $parent['parent_id'];
-        } else {
-            #$productsTree[$parentId] = $groupOfProduct;
-        }
+foreach ($list as $itemData) {
+    $id = $itemData['id'];
+    $pid = $itemData['parent_id'];
 
-
+    $parent = $list[$pid] ?? null;
+    if ($pid > 0 && $parent === null) {
+        $tree[$pid] = $parent;
     }
 
-    if (isset($tree)) {
-        $productsTree[] = $tree;
+    // create new tree item if not exists / otherwise get existing item
+    $item = $tree[$id] ?? null;
+    if ($item === null) {
+        $item = $itemData;
+        $tree[$id] = $item;
     }
 
-/*    if ($parent = $flatProducts[$parentId]) {
-        $productsTree[$parentId] = [
-            'name' => $parent['name'],
-            'children' => $groupOfProduct
-        ];
-    }*/
+    if ($parent !== null) {
+        $parent['children'][] = $item;
+    }
 
-/*    while (!isset($productsTree[$parentId])) {
-        $productsTree[$parentId] = $flatProducts;
-        echo 'cock';
-    }*/
+    $item = $itemData;
 }
 
 
-echo(json_encode($productsTree, JSON_UNESCAPED_UNICODE));
+echo(json_encode($tree, JSON_UNESCAPED_UNICODE));
 die;
-
-$arr = array(
-    array('id' => 100, 'parentid' => 0, 'name' => 'a'),
-    array('id' => 101, 'parentid' => 100, 'name' => 'a'),
-    array('id' => 102, 'parentid' => 101, 'name' => 'a'),
-    array('id' => 103, 'parentid' => 101, 'name' => 'a'),
-);
-
-$new = [];
-foreach ($arr as $a) {
-    $new[$a['parentid']][] = $a;
-}
-$tree = createTree($new, $new[0]); // changed
-print_r($tree);
-
-function createTree(&$list, $parent)
-{
-    $tree = array();
-    foreach ($parent as $k => $l) {
-        if (isset($list[$l['id']])) {
-            $l['children'] = createTree($list, $list[$l['id']]);
-        }
-        $tree[] = $l;
-    }
-    return $tree;
-}
-
-echo(json_encode($treeProducts, JSON_UNESCAPED_UNICODE));
-
-fclose($handle);
