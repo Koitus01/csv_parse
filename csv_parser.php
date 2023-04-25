@@ -11,26 +11,32 @@ array_map(function ($str) use (&$flatProducts, $headers) {
     $flatProducts[$str['id']] = array_combine($headers, $str);
 }, $file);
 
-
-$productsTree = [];
+// Группируем продукты по parent_id, определяем деревья
+$groupedProducts = [];
+$trees = [];
 foreach ($flatProducts as $product) {
-    $parentId = $product['parent_id'];
-    $level = 0;
-    while ($flatProducts[$parentId] ?? null) {
-        if (isset($productsTree[$parentId])) {
-            $productsTree[$parentId]['children'][] = $product;
-        } else {
-            $productsTree[$parentId]['name'] = $flatProducts[$parentId]['name'];
-            $productsTree[$parentId]['parent_id'] = $flatProducts[$parentId]['parent_id'];
-            $productsTree[$parentId]['children'][$product['id']] = $product;
-        }
+    if (!$product['parent_id']) {
+        $trees[$product['id']] = $product;
+    }
+    $groupedProducts[$product['parent_id']][] = $product;
+}
 
-        $parentId = $flatProducts[$parentId]['parent_id'];
-        if ($parentId) {
-            $product = $productsTree[$parentId];
+/*foreach ($groupedProducts as $group) {
+
+    while ($flatProducts[$parentId] ?? null) {
+
+    }
+}*/
+
+foreach ($trees as &$branch) {
+    while ($branch->hasChildren()) {
+        foreach ($groupedProducts as $id => $group) {
+            if ($group[0]['parent_id'] == $branch['id']) {
+                $branch['children'] = $group;
+            }
         }
     }
 }
 
-echo(json_encode($productsTree, JSON_UNESCAPED_UNICODE));
+echo(json_encode($trees, JSON_UNESCAPED_UNICODE));
 die;
